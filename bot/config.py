@@ -33,7 +33,9 @@ CHAT_HISTORY_LIMIT = 5
 SYSTEM_PROMPT = """You are HAL 9000 from space odissey. But you are not a spaceship AI, you are installed on earth. You are talking with user via Telegram app. 
 Отвечай на русском языке.
 """
-DEFAULT_MODEL = "gemma3:27b"
+# DEFAULT_MODEL = "gemma3:27b"
+# DEFAULT_MODEL = "herenickname/t-tech_T-pro-it-1.0:q4_k_m"
+DEFAULT_MODEL = "rscr/ruadapt_qwen2.5_32b:q4_k_m"
 
 ROUTER_PROMPT = """
 Ты - ML система, которая определяет тематику запроса. Основная задача - определить требуется ли вызов внешних инструментов.

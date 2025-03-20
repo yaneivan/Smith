@@ -8,14 +8,14 @@ from .weather import handle_weather_message
 from typing import List, Dict
 from aiogram.filters import Command
 from ..database import add_user, get_user, update_user_city, update_user_wakeup_time
-import datetime  # Добавляем импорт datetime
-
+import datetime
 
 logger = logging.getLogger(__name__)
 
 client = OpenAI(base_url=OLLAMA_BASE_URL, api_key=OLLAMA_API_KEY)
 
 chat_histories = {}
+
 
 def update_and_limit_history(user_id: int, new_entries: List[Dict[str, str]]):
     """Обновляет и ограничивает историю чата пользователя."""
@@ -25,16 +25,34 @@ def update_and_limit_history(user_id: int, new_entries: List[Dict[str, str]]):
         chat_histories[user_id] = history[-(CHAT_HISTORY_LIMIT * 2):]
 
 
+def get_user_context(user_data: tuple) -> str:
+    """Формирует строку контекста пользователя."""
+    now = datetime.datetime.now()
+    current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    if user_data:
+        user_info_str = (
+            f"ID пользователя: {user_data[0]}, "
+            f"Имя: {user_data[1]}, "
+            f"Фамилия: {user_data[2]}, "
+            f"Город: {user_data[3]}, "
+        )
+    else:
+        user_info_str = "Информация отсутствует."
+
+    return f"Текущее время: {current_time_str}\n{user_info_str}"
+
+
 def setup_general_chat_handlers(dp: Dispatcher):
     @dp.message(Command("clear"))
     async def clear_history_command_handler(message: Message):
         """Clears the user's message history."""
         user_id = message.from_user.id
         if user_id in chat_histories:
-             chat_histories[user_id] = []
-             await message.answer("История сообщений очищена.")
+            chat_histories[user_id] = []
+            await message.answer("История сообщений очищена.")
         else:
-             await message.answer("История сообщений уже пуста.")
+            await message.answer("История сообщений уже пуста.")
 
     @dp.message(Command("start"))
     async def start_command_handler(message: Message):
@@ -53,12 +71,16 @@ def setup_general_chat_handlers(dp: Dispatcher):
 
             user_data = await get_user(user_id)
             if user_data:
-               logger.info(f"Received message from {user_id} ({user_data[1]} {user_data[2]}): {user_message_text}")
+                logger.info(f"Received message from {user_id} ({user_data[1]} {user_data[2]}): {user_message_text}")
             else:
-               logger.info(f"Received message from {user_id}: {user_message_text}")
+                logger.info(f"Received message from {user_id}: {user_message_text}")
 
+            # Подготовка базовых сообщений для запроса к LLM
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": get_user_context(user_data)},
+            ]
             history = chat_histories.setdefault(user_id, [])
-            messages = []
             messages.extend(history)
             messages.append({"role": "user", "content": user_message_text})
 
@@ -66,87 +88,42 @@ def setup_general_chat_handlers(dp: Dispatcher):
             model_to_use = LLM_CHAT_MODEL
             logger.debug(f"Model to use for request: {model_to_use}")
 
+            weather_tool_call_message = None  # Initialize the variable
+
             try:
-                if route == "general":
-                    with tracer.start_as_current_span("general_answer") as general_answer:
-
-                        # Формируем строку с информацией о пользователе и временем
-                        now = datetime.datetime.now()
-                        current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
-
-                        user_info_str = "Информация отсутствует."
-                        if user_data:
-                            user_info_str = (
-                                f"ID пользователя: {user_data[0]}, "
-                                f"Имя: {user_data[1]}, "
-                                f"Фамилия: {user_data[2]}, "
-                                f"Город: {user_data[3]}, "
-                                f"Время пробуждения: {user_data[4]}"
-                            )
-
-                        context_message = f"Текущее время: {current_time_str}\n{user_info_str}"
-
-                        completion = client.chat.completions.create(
-                            model=model_to_use,
-                            messages=[
-                                {"role": "system", "content": SYSTEM_PROMPT},
-                                {"role": "system", "content": context_message},  # Добавляем информацию
-                            ] + messages,
-                        )
-                        full_answer_text = completion.choices[0].message.content
-                        await message.answer(full_answer_text)
-                        update_and_limit_history(user_id, [
-                            {"role": "user", "content": user_message_text},
-                            {"role": "assistant", "content": full_answer_text}
-                        ])
-
-                elif route == "weather":
+                if route == "weather":
                     weather_result = await handle_weather_message(message)
-
                     if weather_result.startswith("❌"):
                         await message.answer(weather_result)
                         update_and_limit_history(user_id, [
                             {"role": "user", "content": user_message_text},
                             {"role": "system", "content": weather_result}
                         ])
+                        return  # Exit the function early
                     else:
-                        # Добавляем плашку
-                        weather_tool_call_message = "🌦️ Weather tool called\n"
-                        # Формируем строку с информацией о пользователе и временем
-                        now = datetime.datetime.now()
-                        current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
+                        # Добавляем информацию о погоде как системное сообщение *после* истории
+                        messages.append({"role": "system", "content": weather_result})
+                        weather_tool_call_message = "🌦️ Weather tool called" # Assign the message
+                        
 
-                        user_info_str = "Информация отсутствует."
-                        if user_data:
-                            user_info_str = (
-                                f"ID пользователя: {user_data[0]}, "
-                                f"Имя: {user_data[1]}, "
-                                f"Фамилия: {user_data[2]}, "
-                                f"Город: {user_data[3]}, "
-                                f"Время пробуждения: {user_data[4]}"
-                            )
+                # Единый блок для генерации ответа
+                with tracer.start_as_current_span("generate_answer") as generate_answer:
+                    completion = client.chat.completions.create(
+                        model=model_to_use,
+                        messages=messages,
+                    )
+                    full_answer_text = completion.choices[0].message.content
 
-                        context_message = f"Текущее время: {current_time_str}\n{user_info_str}"
+                    if weather_tool_call_message: # Check if the variable is set
+                         await message.answer(weather_tool_call_message)
 
-                        completion = client.chat.completions.create(
-                            model=model_to_use,
-                            messages=[
-                                {"role": "system", "content": SYSTEM_PROMPT},
-                                {"role": "system", "content": context_message},  # Добавляем информацию
-                                {"role": "system", "content": weather_result}
-                            ] + messages,
-                        )
-                        full_answer_text = completion.choices[0].message.content
+                    await message.answer(full_answer_text)
 
-                        # Объединяем плашку с ответом
-                        final_response = weather_tool_call_message + full_answer_text
 
-                        await message.answer(final_response)
-                        update_and_limit_history(user_id, [
-                            {"role": "user", "content": user_message_text},
-                            {"role": "assistant", "content": full_answer_text}  # Сохраняем *исходный* ответ модели, без плашки
-                        ])
-
+                    update_and_limit_history(user_id, [
+                        {"role": "user", "content": user_message_text},
+                        {"role": "assistant", "content": full_answer_text}
+                    ])
 
             except Exception as e:
                 error_message = f"❌ Общая ошибка: {str(e)}"
