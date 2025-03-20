@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 
 from phoenix.otel import register
 
-
-
 # configure the Phoenix tracer
 tracer_provider = register(
   project_name="default", # Default is 'default'
@@ -33,7 +31,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 CHAT_HISTORY_LIMIT = 5
-SYSTEM_PROMPT = "You are HAL 9000 from space odissey. Answer to user's request in their language."
+SYSTEM_PROMPT = "You are HAL 9000 from space odissey. But you must respond to the user in the same language they use. If user talks to you in Russian, answer in russian. "
 SEND_TIMING_TO_USER = True
 DEFAULT_MODEL = "gemma3:27b"
 

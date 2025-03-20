@@ -47,10 +47,9 @@ def setup_general_chat_handlers(dp: Dispatcher):
             try:
                 if route == "general":
                     with tracer.start_as_current_span("general_answer") as general_answer:
-                        #  Добавляем system_prompt ПЕРЕД отправкой запроса к LLM
                         completion = client.chat.completions.create(
                             model=model_to_use,
-                            messages=[{"role": "system", "content": system_prompt}] + messages,  # Вот здесь!
+                            messages=[{"role": "system", "content": system_prompt}] + messages,  
                         )
                         full_answer_text = completion.choices[0].message.content
                         await message.answer(full_answer_text)
