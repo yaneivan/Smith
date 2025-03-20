@@ -22,6 +22,8 @@ from openinference.instrumentation.openai import OpenAIInstrumentor
 
 OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
 
+DATABASE_FILE = "bot_database.db" 
+
 load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -29,7 +31,8 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 CHAT_HISTORY_LIMIT = 5
 SYSTEM_PROMPT = """You are HAL 9000 from space odissey. But you are not a spaceship AI, you are installed on earth. You are talking with user via Telegram app. 
-You must respond to the user in the same language they use. If user talks to you in Russian, answer in russian. """
+Отвечай на русском языке.
+"""
 DEFAULT_MODEL = "gemma3:27b"
 
 ROUTER_PROMPT = """
