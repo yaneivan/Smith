@@ -5,12 +5,10 @@ from openai import OpenAI
 from ..config import (
     OLLAMA_BASE_URL,
     OLLAMA_API_KEY,
-    LLM_CHAT_MODEL,
     tracer
 )
 from ..weather_api import get_weather
 from ..utils import extract_city, colored_print
-from ..user_data import user_data # Важно для доступа к user_data
 
 
 logger = logging.getLogger(__name__)
@@ -35,9 +33,9 @@ async def handle_weather_message(message: Message) -> str:
                 weather_tool.set_output(weather_data_formatted)
 
             if weather_data_formatted and not weather_data_formatted.startswith("❌"):
-                return weather_data_formatted 
+                return weather_data_formatted
 
-            else:  
+            else:
                 return weather_data_formatted
 
         else:

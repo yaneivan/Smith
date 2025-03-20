@@ -3,8 +3,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
-from bot.handlers import setup_handlers #  Вот так
-from bot.commands import set_default_commands
+from bot.handlers import setup_handlers
 from bot.config import TELEGRAM_TOKEN
 
 logging.basicConfig(level=logging.INFO)
@@ -15,7 +14,6 @@ async def main():
     dp = Dispatcher()
 
     setup_handlers(dp)
-    await set_default_commands(bot)
 
     logger.setLevel(logging.DEBUG)
     await dp.start_polling(bot)
