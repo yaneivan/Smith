@@ -3,3 +3,5 @@
 /bot/handlers/__pycache__
 /tests/__pycache__
 /RAG/knowledge
+/RAG/__pycache__
+/RAG/utils/__pycache__
